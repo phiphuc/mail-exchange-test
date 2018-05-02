@@ -2,7 +2,7 @@ package com.phiphuc.rest;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.swing.text.Document;
+import org.w3c.dom.Document;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
@@ -10,6 +10,9 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
 
 import microsoft.exchange.webservices.data.core.ExchangeService;
 import microsoft.exchange.webservices.data.core.enumeration.misc.ExchangeVersion;
@@ -19,13 +22,16 @@ import microsoft.exchange.webservices.data.credential.ExchangeCredentials;
 import microsoft.exchange.webservices.data.credential.WebCredentials;
 import microsoft.exchange.webservices.data.notification.PushSubscription;
 import microsoft.exchange.webservices.data.property.complex.FolderId;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import com.phiphuc.transaction.TransactionBo;
-import sun.misc.IOUtils;
-import sun.rmi.transport.tcp.TCPEndpoint;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
 
-import java.io.File;
+import java.io.*;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -33,15 +39,15 @@ import java.util.List;
 @Component
 @Path("/payment")
 public class PaymentService {
+    private final Log log = LogFactory.getLog(PaymentService.class);
 
     @Autowired
     TransactionBo transactionBo;
 
-    private TCPEndpoint tcpEndpoint;
-
     @GET
     @Path("/phiphuc")
     public Response savePayment() {
+        log.debug("START FOLLOW MAIL EXCHANGE");
         try {
             ExchangeService service = new ExchangeService(ExchangeVersion.Exchange2010_SP2);
             service.setUrl(new URI("https://outlook.office365.com/EWS/Exchange.asmx"));
@@ -52,15 +58,16 @@ public class PaymentService {
             List<FolderId> folder = new ArrayList<FolderId>();
             folder.add(folderId);
 
-            URI callback = new URI("http://localhost:8082/rest/payment/incomingevent");
-
+            URI callback = new URI("http://node11.codenvy.io:39367/rest/payment/incomingevent");
+            log.debug("START SUBSCRIPTION MAIL EXCHANGE");
             PushSubscription pushSubscription = service.subscribeToPushNotifications(
                     folder,
                     callback /* The endpoint of the listener. */,
                     1/* Get a status event every 5 minutes if no new events are available. */, null  /* watermark: null to start a new subscription. */,
                     EventType.NewMail);
-            System.out.println("PushSubscription = " + pushSubscription);
+            log.debug("SUBSCRIPTION MAIL EXCHANGE SUCCESS ID: " + pushSubscription.getId() + " WATERMARK :" + pushSubscription.getWaterMark());
         } catch (Exception e) {
+            log.debug("SUBSCRIPTION MAIL EXCHANGE ERROR ");
             e.printStackTrace();
         }
         String result = transactionBo.save();
@@ -73,14 +80,37 @@ public class PaymentService {
     @POST()
     @Produces(MediaType.TEXT_XML)
     public Response onNotificationReceived(@Context HttpServletRequest request, @Context HttpServletResponse response) throws Exception {
-        System.out.println("received EWS notification success");
-        File file = new File("C:\\Users\\XYZ\\workspace\\POC\\ews_notification_response.xml");
-        /*String responseXMLStr = IOUtils.toString(new FileInputStream(file));*/
+        log.debug("RECEIVED EWS NOTIFICATION SUCCESS");
+        Document doc = loadXML(IOUtils.toString(request.getInputStream()));
+        log.debug("ROOT ELEMENT :" + doc.getDocumentElement().getNodeName());
+        // Deserialize the document
 
-        System.out.println(request);
-        System.out.println("----------------------");
-        System.out.println(response);
         return Response.ok(null).build();
     }
+    private Document loadXML(String rawXML) {
+        Document doc = null;
+        try {
+            log.debug("Incoming request input stream : " + rawXML);
 
+            DocumentBuilderFactory domFactory = DocumentBuilderFactory.newInstance();
+
+            // turn on this flag in order to resolve manually the namespaces of the document
+            domFactory.setNamespaceAware(true);
+            DocumentBuilder builder = domFactory.newDocumentBuilder();
+            doc = (Document) builder.parse(new InputSource(new ByteArrayInputStream(rawXML.getBytes("UTF-8"))));
+        } catch (ParserConfigurationException e) {
+            log.error("Unable to create a new DocumentBuilder");
+            e.printStackTrace();
+        } catch (UnsupportedEncodingException e) {
+            log.error("Unsupported Encoding: UTF-8");
+            e.printStackTrace();
+        } catch (SAXException e) {
+            log.error("Error parsing XML");
+            e.printStackTrace();
+        } catch (IOException e) {
+            log.error("IOException");
+            e.printStackTrace();
+        }
+        return doc;
+    }
 }
