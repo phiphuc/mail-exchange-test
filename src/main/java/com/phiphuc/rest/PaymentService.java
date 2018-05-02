@@ -2,6 +2,10 @@ package com.phiphuc.rest;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.json.XML;
 import org.w3c.dom.Document;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
@@ -44,6 +48,10 @@ public class PaymentService {
     @Autowired
     TransactionBo transactionBo;
 
+    public static int PRETTY_PRINT_INDENT_FACTOR = 4;
+    public static String TEST_XML_STRING =
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
+
     @GET
     @Path("/phiphuc")
     public Response savePayment() {
@@ -80,17 +88,24 @@ public class PaymentService {
     @POST()
     @Produces(MediaType.TEXT_XML)
     public Response onNotificationReceived(@Context HttpServletRequest request, @Context HttpServletResponse response) throws Exception {
-        log.debug("RECEIVED EWS NOTIFICATION SUCCESS");
-        Document doc = loadXML(IOUtils.toString(request.getInputStream()));
-        log.debug("ROOT ELEMENT :" + doc.getDocumentElement().getNodeName());
-        // Deserialize the document
+        System.out.println("RECEIVED EWS NOTIFICATION SUCCESS");
+        /*Document doc = loadXML(IOUtils.toString(request.getInputStream()));*/
 
+        try {
+            JSONObject xmlJSONObj = XML.toJSONObject(IOUtils.toString(request.getInputStream()));
+            String jsonPrettyPrintString = xmlJSONObj.toString(PRETTY_PRINT_INDENT_FACTOR);
+            System.out.println(jsonPrettyPrintString);
+        } catch (JSONException je) {
+            System.out.println(je.toString());
+        }
+        /*System.out.println("ROOT ELEMENT :" + doc.getDocumentElement().getNodeName());*/
+        // Deserialize the document
         return Response.ok(null).build();
     }
     private Document loadXML(String rawXML) {
         Document doc = null;
         try {
-            log.debug("Incoming request input stream : " + rawXML);
+            System.out.println("Incoming request input stream : " + rawXML);
 
             DocumentBuilderFactory domFactory = DocumentBuilderFactory.newInstance();
 
@@ -99,16 +114,16 @@ public class PaymentService {
             DocumentBuilder builder = domFactory.newDocumentBuilder();
             doc = (Document) builder.parse(new InputSource(new ByteArrayInputStream(rawXML.getBytes("UTF-8"))));
         } catch (ParserConfigurationException e) {
-            log.error("Unable to create a new DocumentBuilder");
+            System.out.println("Unable to create a new DocumentBuilder");
             e.printStackTrace();
         } catch (UnsupportedEncodingException e) {
-            log.error("Unsupported Encoding: UTF-8");
+            System.out.println("Unsupported Encoding: UTF-8");
             e.printStackTrace();
         } catch (SAXException e) {
-            log.error("Error parsing XML");
+            System.out.println("Error parsing XML");
             e.printStackTrace();
         } catch (IOException e) {
-            log.error("IOException");
+            System.out.println("IOException");
             e.printStackTrace();
         }
         return doc;
