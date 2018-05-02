@@ -1,9 +1,13 @@
 package com.phiphuc.rest;
 
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.swing.text.Document;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
@@ -18,6 +22,7 @@ import microsoft.exchange.webservices.data.property.complex.FolderId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import com.phiphuc.transaction.TransactionBo;
+import sun.misc.IOUtils;
 import sun.rmi.transport.tcp.TCPEndpoint;
 
 import java.io.File;
@@ -67,10 +72,14 @@ public class PaymentService {
     @Path("/incomingevent")
     @POST()
     @Produces(MediaType.TEXT_XML)
-    public Response onNotificationReceived() throws Exception {
+    public Response onNotificationReceived(@Context HttpServletRequest request, @Context HttpServletResponse response) throws Exception {
         System.out.println("received EWS notification success");
         File file = new File("C:\\Users\\XYZ\\workspace\\POC\\ews_notification_response.xml");
         /*String responseXMLStr = IOUtils.toString(new FileInputStream(file));*/
+
+        System.out.println(request);
+        System.out.println("----------------------");
+        System.out.println(response);
         return Response.ok(null).build();
     }
 
