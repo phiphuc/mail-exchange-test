@@ -86,10 +86,9 @@ public class PaymentService {
 
     @Path("/incomingevent")
     @POST()
-    @Produces(MediaType.TEXT_XML)
+    @Produces(MediaType.APPLICATION_JSON)
     public Response onNotificationReceived(@Context HttpServletRequest request, @Context HttpServletResponse response) throws Exception {
         System.out.println("RECEIVED EWS NOTIFICATION SUCCESS");
-        /*Document doc = loadXML(IOUtils.toString(request.getInputStream()));*/
 
         try {
             JSONObject xmlJSONObj = XML.toJSONObject(IOUtils.toString(request.getInputStream()));
